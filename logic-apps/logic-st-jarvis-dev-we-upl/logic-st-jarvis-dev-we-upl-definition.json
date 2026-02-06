@@ -1,0 +1,257 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Add_a_new_row_(preview)": {
+                "inputs": {
+                    "body": {
+                        "aprf_shvnleadsource": 927150000,
+                        "cd_deadline": "@body('parseJSON')?['load_window_from']",
+                        "cd_opportunitytype": 899250001,
+                        "emailaddress1": "@body('parseJSON')?['sender_email']",
+                        "hso_BrokerSiteID@odata.bind": "accounts(@{body('parseJSON')?['correct_company_account_id_broker_site']})",
+                        "hso_CargoID@odata.bind": "hso_cargos(@{body('parseJSON')?['Product ID (official)']})",
+                        "hso_ContactID@odata.bind": "contacts(@{body('parseJSON')?['Contact_ID']})",
+                        "hso_DischargePortID@odata.bind": "hso_ports(@{body('parseJSON')?['dischport_port_portmatch_id']})",
+                        "hso_ExistingAccount@odata.bind": "accounts(cbcf3698-a103-ef11-9f89-000d3ab61d19)",
+                        "hso_ExistingContact@odata.bind": "contacts(@{body('parseJSON')?['Contact_ID']})",
+                        "hso_LoadPortID@odata.bind": "hso_ports(@{body('parseJSON')?['loadport_port_portmatch_id']})",
+                        "hso_MasterBrokerID@odata.bind": "accounts(@{body('parseJSON')?['correct_company_account_id_broker']})",
+                        "hso_MasterCustomerID@odata.bind": "@body('parseJSON')?['correct_company_account_id_charter']",
+                        "hso_TerminalLocation@odata.bind": "businessunits(ba794d08-7606-ed11-82e5-000d3ab81670)",
+                        "hso_fullrequest": "@body('parseJSON')?['full_request']",
+                        "hso_leadtype": 864640000,
+                        "hso_loadwindowfrom": "@body('parseJSON')?['load_window_from']",
+                        "hso_loadwindowto": "@body('parseJSON')?['load_window_to']",
+                        "hso_snldivision": 864640002,
+                        "hso_source": 864640000,
+                        "hso_sttopic": "@body('parseJSON')?['topic']",
+                        "hso_totalquantity": "@body('parseJSON')?['Maximum Volume (t)']",
+                        "leadqualitycode": 3,
+                        "ownerid@odata.bind": "@body('parseJSON')?['owner_id']",
+                        "subject": "@body('parseJSON')?['topic']"
+                    },
+                    "headers": {
+                        "organization": "https://stolt-uat.crm4.dynamics.com",
+                        "prefer": "return=representation,odata.include-annotations=*"
+                    },
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['commondataservice']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent('leads'))}"
+                },
+                "runAfter": {
+                    "parseJSON": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection"
+            },
+            "Insert_or_Merge_Entity_(V2)": {
+                "inputs": {
+                    "body": {
+                        "brokersiteid": "@body('Add_a_new_row_(preview)')?['_hso_brokersiteid_value']",
+                        "cargo": "@body('Add_a_new_row_(preview)')?['_hso_cargoid_value']",
+                        "cargogroup": "@body('Add_a_new_row_(preview)')?['_hso_cargogroupid_value']",
+                        "contactid": "@body('Add_a_new_row_(preview)')?['_hso_contactid_value']",
+                        "createdby": "@body('Add_a_new_row_(preview)')?['_createdby_value']",
+                        "dischargeportid": "@body('Add_a_new_row_(preview)')?['_hso_dischargeportid_value']",
+                        "dischargeregion": "@body('Add_a_new_row_(preview)')?['_hso_dischargeregionid_value']",
+                        "email_run_time": "@body('parseJSON')?['email_run_time']",
+                        "emailbody": "@body('Add_a_new_row_(preview)')?['hso_fullrequest']",
+                        "leadid": "@body('Add_a_new_row_(preview)')?['leadid']",
+                        "loadportid": "@body('Add_a_new_row_(preview)')?['_hso_loadportid_value']",
+                        "loadregion": "@body('Add_a_new_row_(preview)')?['_hso_loadregionid_value']",
+                        "loadwindowfrom": "@body('Add_a_new_row_(preview)')?['hso_loadwindowfrom']",
+                        "loadwindowto": "@body('Add_a_new_row_(preview)')?['hso_loadwindowto']",
+                        "mastercustomer": "@body('Add_a_new_row_(preview)')?['_hso_mastercustomerid_value']",
+                        "ownerid": "@body('Add_a_new_row_(preview)')?['_ownerid_value']",
+                        "process_status": "@if(equals(body('parseJSON')?['owner_id'], 'systemusers(f9e26e08-dc74-ef11-a671-000d3ab1415a)'), 'normalqueue', 'exceptionqueue')",
+                        "quantity": "@body('Add_a_new_row_(preview)')?['hso_totalquantity']",
+                        "runid": "@body('parseJSON')?['run_id']",
+                        "subject": "@body('parseJSON')?['subject']",
+                        "topic": "@body('Add_a_new_row_(preview)')?['hso_sttopic']"
+                    },
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azuretables']['connectionId']"
+                        }
+                    },
+                    "method": "patch",
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('ststjarvisdevwefa'))}/tables/@{encodeURIComponent('stprocesslog')}/entities(PartitionKey='@{encodeURIComponent('crm')}',RowKey='@{encodeURIComponent(body('Add_a_new_row_(preview)')?['leadid'])}')"
+                },
+                "runAfter": {
+                    "Add_a_new_row_(preview)": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection"
+            },
+            "base64ToString": {
+                "inputs": "@base64ToString(triggerBody()?['ContentData'])",
+                "runAfter": {},
+                "type": "Compose"
+            },
+            "parseJSON": {
+                "inputs": {
+                    "content": "@outputs('stringToJson')",
+                    "schema": {
+                        "properties": {
+                            "Contact_ID": {
+                                "type": "string"
+                            },
+                            "Contact_person_name": {
+                                "type": "string"
+                            },
+                            "Maximum Volume (t)": {
+                                "type": "integer"
+                            },
+                            "Minimum Volume (t)": {
+                                "type": "integer"
+                            },
+                            "Product ID (official)": {
+                                "type": "string"
+                            },
+                            "Source_of_request": {
+                                "type": "string"
+                            },
+                            "cargo": {
+                                "type": "string"
+                            },
+                            "correct_company_account_id_broker": {
+                                "type": "string"
+                            },
+                            "correct_company_account_id_broker_site": {
+                                "type": "string"
+                            },
+                            "correct_company_account_id_charter": {
+                                "type": "string"
+                            },
+                            "discharge_port": {
+                                "type": "string"
+                            },
+                            "dischport_port_portmatch_id": {
+                                "type": "string"
+                            },
+                            "email_run_time": {
+                                "type": "string"
+                            },
+                            "full_request": {
+                                "type": "string"
+                            },
+                            "load_port": {
+                                "type": "string"
+                            },
+                            "load_window": {
+                                "type": "string"
+                            },
+                            "load_window_from": {
+                                "type": "string"
+                            },
+                            "load_window_to": {
+                                "type": "string"
+                            },
+                            "loadport_port_portmatch_id": {
+                                "type": "string"
+                            },
+                            "owner": {
+                                "type": "string"
+                            },
+                            "owner_id": {
+                                "type": "string"
+                            },
+                            "run_id": {
+                                "type": "string"
+                            },
+                            "sender_email": {
+                                "type": "string"
+                            },
+                            "subject": {
+                                "type": "string"
+                            },
+                            "topic": {
+                                "type": "string"
+                            },
+                            "trade_lane": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "runAfter": {
+                    "stringToJson": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson"
+            },
+            "stringToJson": {
+                "inputs": "@json(outputs('base64ToString'))",
+                "runAfter": {
+                    "base64ToString": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Compose"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "defaultValue": {},
+                "type": "Object"
+            }
+        },
+        "triggers": {
+            "When_a_message_is_received_in_a_topic_subscription_(auto-complete)": {
+                "evaluatedRecurrence": {
+                    "frequency": "Minute",
+                    "interval": 3
+                },
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['servicebus-1']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/@{encodeURIComponent(encodeURIComponent('sbt-st-jarvis-we-upl'))}/subscriptions/@{encodeURIComponent('sbt-st-jarvis-we-upl')}/messages/head",
+                    "queries": {
+                        "subscriptionType": "Main"
+                    }
+                },
+                "recurrence": {
+                    "frequency": "Minute",
+                    "interval": 3
+                },
+                "type": "ApiConnection"
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "value": {
+                "azuretables": {
+                    "connectionId": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/resourceGroups/rg-st-jarvis-dev-we/providers/Microsoft.Web/connections/azuretables",
+                    "connectionName": "azuretables",
+                    "id": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/providers/Microsoft.Web/locations/westeurope/managedApis/azuretables"
+                },
+                "commondataservice": {
+                    "connectionId": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/resourceGroups/rg-st-jarvis-dev-we/providers/Microsoft.Web/connections/commondataservice",
+                    "connectionName": "commondataservice",
+                    "id": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/providers/Microsoft.Web/locations/westeurope/managedApis/commondataservice"
+                },
+                "servicebus-1": {
+                    "connectionId": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/resourceGroups/rg-st-jarvis-dev-we/providers/Microsoft.Web/connections/servicebus-2",
+                    "connectionName": "servicebus-2",
+                    "id": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/providers/Microsoft.Web/locations/westeurope/managedApis/servicebus"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,121 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Compose_time": {
+                "inputs": "@utcNow()",
+                "runAfter": {},
+                "type": "Compose"
+            },
+            "Html_to_text": {
+                "inputs": {
+                    "body": "<p class=\"editor-paragraph\">@{triggerBody()?['body']}</p>",
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['conversionservice']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "path": "/html2text"
+                },
+                "runAfter": {
+                    "composeRunId": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection"
+            },
+            "Send_message": {
+                "inputs": {
+                    "body": {
+                        "ContentData": "@{base64(concat(outputs('composeRunId'),'--runid--',triggerBody()?['from'],'(',body('Html_to_text'),')',triggerBody()?['subject'],'{',outputs('Compose_time'),'}'))}"
+                    },
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['servicebus-1']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "path": "/@{encodeURIComponent(encodeURIComponent('sbt-st-jarvis-we-con'))}/messages",
+                    "queries": {
+                        "systemProperties": "None"
+                    }
+                },
+                "runAfter": {
+                    "Html_to_text": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection"
+            },
+            "composeRunId": {
+                "inputs": "@workflow().run.id",
+                "runAfter": {
+                    "Compose_time": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Compose"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "defaultValue": {},
+                "type": "Object"
+            }
+        },
+        "triggers": {
+            "When_a_new_email_arrives_in_a_shared_mailbox_(V2)": {
+                "evaluatedRecurrence": {
+                    "frequency": "Minute",
+                    "interval": 3
+                },
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['office365-1']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/v2/SharedMailbox/Mail/OnNewEmail",
+                    "queries": {
+                        "folderId": "Inbox",
+                        "hasAttachments": false,
+                        "importance": "Any",
+                        "includeAttachments": false,
+                        "mailboxAddress": "TankerQuotes@stolt.com"
+                    }
+                },
+                "recurrence": {
+                    "frequency": "Minute",
+                    "interval": 3
+                },
+                "splitOn": "@triggerBody()?['value']",
+                "type": "ApiConnection"
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "value": {
+                "conversionservice": {
+                    "connectionId": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/resourceGroups/rg-st-jarvis-dev-we/providers/Microsoft.Web/connections/conversionservice-2",
+                    "connectionName": "conversionservice-2",
+                    "id": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/providers/Microsoft.Web/locations/westeurope/managedApis/conversionservice"
+                },
+                "office365-1": {
+                    "connectionId": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/resourceGroups/rg-st-jarvis-dev-we/providers/Microsoft.Web/connections/office365-2",
+                    "connectionName": "office365-2",
+                    "id": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/providers/Microsoft.Web/locations/westeurope/managedApis/office365"
+                },
+                "servicebus-1": {
+                    "connectionId": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/resourceGroups/rg-st-jarvis-dev-we/providers/Microsoft.Web/connections/servicebus-2",
+                    "connectionName": "servicebus-2",
+                    "id": "/subscriptions/8ddd0477-caae-4f7e-a4d3-8a9d9b596e7b/providers/Microsoft.Web/locations/westeurope/managedApis/servicebus"
+                }
+            }
+        }
+    }
+}

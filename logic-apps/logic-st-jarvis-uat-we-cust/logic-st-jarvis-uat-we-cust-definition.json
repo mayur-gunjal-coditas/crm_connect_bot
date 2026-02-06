@@ -1,0 +1,146 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "When_a_message_is_received_in_a_topic_subscription_(auto-complete)": {
+                "recurrence": {
+                    "interval": 3,
+                    "frequency": "Minute"
+                },
+                "evaluatedRecurrence": {
+                    "interval": 3,
+                    "frequency": "Minute"
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['servicebus']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/@{encodeURIComponent(encodeURIComponent('sbt-st-jarvis-we-predicted-cust'))}/subscriptions/@{encodeURIComponent('sbt-st-jarvis-we-predicted-cust')}/messages/head",
+                    "queries": {
+                        "subscriptionType": "Main"
+                    }
+                }
+            }
+        },
+        "actions": {
+            "base64ToString": {
+                "runAfter": {},
+                "type": "Compose",
+                "inputs": "@base64ToString(triggerBody()?['ContentData'])"
+            },
+            "stringToJson": {
+                "runAfter": {
+                    "base64ToString": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Compose",
+                "inputs": "@json(outputs('base64ToString'))"
+            },
+            "Parse_JSON-copy": {
+                "runAfter": {
+                    "stringToJson": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@outputs('stringToJson')",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "mast_cos_name": {
+                                "type": "string"
+                            },
+                            "lead_id": {
+                                "type": "string"
+                            },
+                            "mas_cos_id": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "Update_a_row": {
+                "runAfter": {
+                    "Parse_JSON-copy": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['commondataservice-1']['connectionId']"
+                        }
+                    },
+                    "method": "patch",
+                    "body": {
+                        "hso_MasterCustomerID@odata.bind": "accounts(@{body('Parse_JSON-copy')?['mas_cos_id']})"
+                    },
+                    "headers": {
+                        "prefer": "return=representation,odata.include-annotations=*",
+                        "accept": "application/json;odata.metadata=full",
+                        "organization": "https://stolt-uat.crm4.dynamics.com"
+                    },
+                    "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent('leads'))}(@{encodeURIComponent(encodeURIComponent(body('Parse_JSON-copy')?['lead_id']))})"
+                }
+            },
+            "Execute_a_SQL_query_(V2)": {
+                "runAfter": {
+                    "Update_a_row": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['sql']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "body": {
+                        "query": "UPDATE [dbo].[process_log]\nSET mastercustomer ='@{body('Parse_JSON-copy')?['mas_cos_id']}', master_customer_name = '@{body('Parse_JSON-copy')?['mast_cos_name']}'\nWHERE leadid ='@{body('Parse_JSON-copy')?['lead_id']}' ;"
+                    },
+                    "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('default'))},@{encodeURIComponent(encodeURIComponent('default'))}/query/sql"
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {
+                "servicebus": {
+                    "id": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/providers/Microsoft.Web/locations/westeurope/managedApis/servicebus",
+                    "connectionId": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/resourceGroups/rg-st-jarvis-uat-we/providers/Microsoft.Web/connections/servicebus",
+                    "connectionName": "servicebus"
+                },
+                "commondataservice-1": {
+                    "id": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/providers/Microsoft.Web/locations/westeurope/managedApis/commondataservice",
+                    "connectionId": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/resourceGroups/rg-st-jarvis-uat-we/providers/Microsoft.Web/connections/commondataservice-2",
+                    "connectionName": "commondataservice-2"
+                },
+                "sql": {
+                    "id": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/providers/Microsoft.Web/locations/westeurope/managedApis/sql",
+                    "connectionId": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/resourceGroups/rg-st-jarvis-uat-we/providers/Microsoft.Web/connections/sql",
+                    "connectionName": "sql"
+                }
+            }
+        }
+    }
+}

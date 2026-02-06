@@ -1,0 +1,504 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "When_a_message_is_received_in_a_topic_subscription_(auto-complete)": {
+                "recurrence": {
+                    "frequency": "Minute",
+                    "interval": 3
+                },
+                "evaluatedRecurrence": {
+                    "frequency": "Minute",
+                    "interval": 3
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['servicebus']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/@{encodeURIComponent(encodeURIComponent('sbt-st-jarvis-we-upl'))}/subscriptions/@{encodeURIComponent('sbt-st-jarvis-we-upl')}/messages/head",
+                    "queries": {
+                        "subscriptionType": "Main"
+                    }
+                }
+            }
+        },
+        "actions": {
+            "Add_a_new_row_(preview)": {
+                "runAfter": {
+                    "Parse_JSON-crm-name": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['commondataservice-1']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "body": {
+                        "hso_ExistingAccount@odata.bind": "accounts(698bb79f-5476-ef11-a671-000d3ad95393)",
+                        "hso_ContactID@odata.bind": "contacts(@{body('Parse_JSON')?['Contact_ID']})",
+                        "hso_ExistingContact@odata.bind": "contacts(@{body('Parse_JSON')?['Contact_ID']})",
+                        "cd_deadline": "@body('Parse_JSON')?['load_window_from']",
+                        "hso_fullrequest": "@body('Parse_JSON')?['full_request']",
+                        "aprf_shvnleadsource": 927150000,
+                        "hso_leadtype": 864640000,
+                        "leadqualitycode": 3,
+                        "hso_sttopic": "@body('Parse_JSON')?['topic']",
+                        "hso_TerminalLocation@odata.bind": "businessunits(ba794d08-7606-ed11-82e5-000d3ab81670)",
+                        "subject": "@body('Parse_JSON')?['topic']",
+                        "hso_BrokerSiteID@odata.bind": "accounts(@{body('Parse_JSON')?['correct_company_account_id_broker_site']})",
+                        "hso_MasterCustomerID@odata.bind": "accounts(@{body('Parse_JSON')?['correct_company_account_id_charter']})",
+                        "emailaddress1": "@body('Parse_JSON')?['sender_email']",
+                        "cd_opportunitytype": 899250001,
+                        "hso_snldivision": 864640002,
+                        "hso_source": 864640000,
+                        "hso_CargoID@odata.bind": "@body('Parse_JSON')?['Product ID (official)']",
+                        "hso_CargoGroupId@odata.bind": "hso_cargogroups(@{body('Parse_JSON')?['cargo_group_id']})",
+                        "hso_DischargePortID@odata.bind": "@body('Parse_JSON')?['dischport_port_portmatch_id']",
+                        "hso_DischargeRegionId@odata.bind": "@body('Parse_JSON')?['discharge_region_id']",
+                        "hso_LineofBusinessId@odata.bind": "@body('Parse_JSON')?['lineofbusiness_id_value']",
+                        "hso_LoadPortID@odata.bind": "hso_ports(@{body('Parse_JSON')?['loadport_port_portmatch_id']})",
+                        "hso_loadwindowfrom": "@body('Parse_JSON')?['load_window_from']",
+                        "hso_loadwindowto": "@body('Parse_JSON')?['load_window_to']",
+                        "ownerid@odata.bind": "@body('Parse_JSON')?['owner_id']",
+                        "hso_totalquantity": "@body('Parse_JSON')?['Maximum Volume (t)']",
+                        "hso_TradeLaneId@odata.bind": "@body('Parse_JSON')?['tradelane_id_value']"
+                    },
+                    "headers": {
+                        "prefer": "return=representation,odata.include-annotations=*",
+                        "organization": "https://stolt.crm4.dynamics.com"
+                    },
+                    "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent('leads'))}"
+                }
+            },
+            "Insert_or_Replace_Entity_(V2)": {
+                "runAfter": {
+                    "Add_a_new_row_(preview)": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azuretables']['connectionId']"
+                        }
+                    },
+                    "method": "put",
+                    "body": {
+                        "broker_site_name": "@body('Parse_JSON-crm-name')?['crm_broker_site']",
+                        "brokersiteid": "@body('Add_a_new_row_(preview)')?['_hso_brokersiteid_value']",
+                        "cargo": "@body('Add_a_new_row_(preview)')?['_hso_cargoid_value']",
+                        "cargo_name": "@body('Parse_JSON-crm-name')?['crm_product_name']",
+                        "cargogroup": "@body('Add_a_new_row_(preview)')?['_hso_cargogroupid_value']",
+                        "contact_name": "@body('Parse_JSON-crm-name')?['crm_contact_name']",
+                        "contactid": "@body('Add_a_new_row_(preview)')?['_hso_contactid_value']",
+                        "createdby": "@body('Add_a_new_row_(preview)')?['_createdby_value']",
+                        "dischargeport_name": "@body('Parse_JSON-crm-name')?['crm_discharge_port_name']",
+                        "dischargeportid": "@body('Add_a_new_row_(preview)')?['_hso_dischargeportid_value']",
+                        "dischargeregion": "@body('Add_a_new_row_(preview)')?['_hso_dischargeregionid_value']",
+                        "email_run_time": "@body('Parse_JSON')?['email_run_time']",
+                        "emailbody": "@body('Add_a_new_row_(preview)')?['hso_fullrequest']",
+                        "leadid": "@body('Add_a_new_row_(preview)')?['leadid']",
+                        "loadport_name": "@body('Parse_JSON-crm-name')?['crm_load_port_name']",
+                        "loadportid": "@body('Add_a_new_row_(preview)')?['_hso_loadportid_value']",
+                        "loadregion": "@body('Add_a_new_row_(preview)')?['_hso_loadregionid_value']",
+                        "loadwindowfrom": "@body('Add_a_new_row_(preview)')?['hso_loadwindowfrom']",
+                        "loadwindowto": "@body('Add_a_new_row_(preview)')?['hso_loadwindowto']",
+                        "master_customer_name": "@body('Parse_JSON-crm-name')?['crm_charter']",
+                        "mastercustomer": "@body('Add_a_new_row_(preview)')?['_hso_mastercustomerid_value']",
+                        "ownerid": "@body('Add_a_new_row_(preview)')?['_ownerid_value']",
+                        "process_status": "@if(equals(body('Parse_JSON')?['owner_id'], 'systemusers(81bd16c2-d774-ef11-a670-7c1e523555bb)'), 'normalqueue', 'exceptionqueue')\r\n",
+                        "quantity": "@body('Add_a_new_row_(preview)')?['hso_totalquantity']",
+                        "runid": "@body('Parse_JSON')?['run_id']",
+                        "subject": "@body('Parse_JSON')?['subject']",
+                        "topic": "@body('Add_a_new_row_(preview)')?['hso_sttopic']",
+                        "all_discharge_port_id_initial_status": "@{body('Parse_JSON')?['all_decharge_port_id']}",
+                        "all_discharge_port_name_initial_status": "@{body('Parse_JSON')?['all_decharge_port_name']}",
+                        "all_discharge_region_id_initial_status": "@{body('Parse_JSON')?['all_decharge_region_id']}",
+                        "all_discharge_region_name_initial_status": "@{body('Parse_JSON')?['all_decharge_region_name']}",
+                        "tradelane_id_value": "@{body('Parse_JSON')?['tradelane_id_value']}",
+                        "lineofbusiness_id_value": "@{body('Parse_JSON')?['lineofbusiness_id_value']}",
+                        "tradelane_id_name": "@{body('Parse_JSON')?['tradelane_id_name']}",
+                        "lineofbusiness_id_name": "@{body('Parse_JSON')?['lineofbusiness_id_name']}"
+                    },
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/tables/@{encodeURIComponent('stprocesslog')}/entities(PartitionKey='@{encodeURIComponent(guid())}',RowKey='@{encodeURIComponent(body('Add_a_new_row_(preview)')?['leadid'])}')"
+                }
+            },
+            "Insert_row_(V2)": {
+                "runAfter": {
+                    "Insert_or_Replace_Entity_(V2)": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['sql']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "body": {
+                        "PartitionKey": "@concat('success-process-queue-\r\n',formatDateTime(utcNow(), 'yyyyMMddHHmmss'))",
+                        "RowKey": "@concat('success-process-queue-\r\n',formatDateTime(utcNow(), 'yyyyMMddHHmmss'))",
+                        "brokersiteid": "@body('Add_a_new_row_(preview)')?['_hso_brokersiteid_value']",
+                        "cargo": "@body('Add_a_new_row_(preview)')?['_hso_cargoid_value']",
+                        "cargogroup": "@body('Add_a_new_row_(preview)')?['_hso_cargogroupid_value']",
+                        "contactid": "@body('Add_a_new_row_(preview)')?['_hso_contactid_value']",
+                        "createdby": "@body('Add_a_new_row_(preview)')?['_createdby_value']",
+                        "dischargeportid": "@body('Add_a_new_row_(preview)')?['_hso_dischargeportid_value']",
+                        "dischargeregion": "@body('Add_a_new_row_(preview)')?['_hso_dischargeregionid_value']",
+                        "leadid": "@body('Add_a_new_row_(preview)')?['leadid']",
+                        "loadportid": "@body('Add_a_new_row_(preview)')?['_hso_loadportid_value']",
+                        "loadregion": "@body('Add_a_new_row_(preview)')?['_hso_loadregionid_value']",
+                        "loadwindowfrom": "@body('Add_a_new_row_(preview)')?['hso_loadwindowfrom']",
+                        "loadwindowto": "@body('Add_a_new_row_(preview)')?['hso_loadwindowto']",
+                        "mastercustomer": "@body('Add_a_new_row_(preview)')?['_hso_mastercustomerid_value']",
+                        "ownerid": "@body('Add_a_new_row_(preview)')?['_ownerid_value']",
+                        "quantity": "@body('Add_a_new_row_(preview)')?['hso_totalquantity']",
+                        "process_status": "@if(equals(body('Parse_JSON')?['owner_id'], 'systemusers(81bd16c2-d774-ef11-a670-7c1e523555bb)'), 'normalqueue', 'exceptionqueue')\r\n",
+                        "run_id": "@body('Parse_JSON')?['run_id']",
+                        "error_desc": "NA",
+                        "email_run_time": "@body('Parse_JSON')?['email_run_time']",
+                        "subject": "@body('Parse_JSON')?['subject']",
+                        "body": "@body('Add_a_new_row_(preview)')?['hso_fullrequest']",
+                        "master_customer_name": "@body('Parse_JSON-crm-name')?['crm_charter']",
+                        "broker_site_name": "@body('Parse_JSON-crm-name')?['crm_broker_site']",
+                        "contact_name": "@body('Parse_JSON-crm-name')?['crm_contact_name']",
+                        "cargo_name": "@body('Parse_JSON-crm-name')?['crm_product_name']",
+                        "loadport_name": "@body('Parse_JSON-crm-name')?['crm_load_port_name']",
+                        "dischargeport_name": "@body('Parse_JSON-crm-name')?['crm_discharge_port_name']",
+                        "trade_lane": "@body('Parse_JSON')?['tradelane_id_name']",
+                        "all_discharge_port_name": "@{body('Parse_JSON')?['all_decharge_port_name']}",
+                        "all_discharge_port_id": "@{body('Parse_JSON')?['all_decharge_port_id']}",
+                        "all_discharge_region_name": "@{body('Parse_JSON')?['all_decharge_region_name']}",
+                        "all_discharge_region_id": "@{body('Parse_JSON')?['all_decharge_region_id']}"
+                    },
+                    "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('default'))},@{encodeURIComponent(encodeURIComponent('default'))}/tables/@{encodeURIComponent(encodeURIComponent('[dbo].[process_log]'))}/items"
+                }
+            },
+            "Parse_JSON": {
+                "runAfter": {
+                    "stringToJson": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@outputs('stringToJson')",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "sender_email": {
+                                "type": "string"
+                            },
+                            "topic": {
+                                "type": "string"
+                            },
+                            "correct_company_account_id_charter": {
+                                "type": "string"
+                            },
+                            "correct_company_account_id_broker": {
+                                "type": "string"
+                            },
+                            "correct_company_account_id_broker_site": {
+                                "type": "string"
+                            },
+                            "Contact_person_name": {
+                                "type": "string"
+                            },
+                            "Contact_ID": {
+                                "type": "string"
+                            },
+                            "Source_of_request": {
+                                "type": "string"
+                            },
+                            "cargo": {
+                                "type": "string"
+                            },
+                            "Product ID (official)": {
+                                "type": "string"
+                            },
+                            "Minimum Volume (t)": {
+                                "type": "integer"
+                            },
+                            "Maximum Volume (t)": {
+                                "type": "integer"
+                            },
+                            "loadport_port_portmatch_id": {
+                                "type": "string"
+                            },
+                            "load_port": {
+                                "type": "string"
+                            },
+                            "discharge_port": {
+                                "type": "string"
+                            },
+                            "dischport_port_portmatch_id": {
+                                "type": "string"
+                            },
+                            "trade_lane": {
+                                "type": "string"
+                            },
+                            "tradelane_id_value": {
+                                "type": "string"
+                            },
+                            "lineofbusiness_id_value": {
+                                "type": "string"
+                            },
+                            "tradelane_id_name": {
+                                "type": "string"
+                            },
+                            "lineofbusiness_id_name": {
+                                "type": "string"
+                            },
+                            "load_window": {
+                                "type": "string"
+                            },
+                            "load_window_from": {
+                                "type": "string"
+                            },
+                            "load_window_to": {
+                                "type": "string"
+                            },
+                            "owner": {
+                                "type": "string"
+                            },
+                            "full_request": {
+                                "type": "string"
+                            },
+                            "cargo_group": {
+                                "type": "string"
+                            },
+                            "cargo_group_id": {
+                                "type": "string"
+                            },
+                            "discharge_region_id": {
+                                "type": "string"
+                            },
+                            "discharge_region": {
+                                "type": "string"
+                            },
+                            "all_decharge_port_name": {
+                                "type": "array",
+                                "items": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "all_decharge_port_id": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "all_decharge_region_name": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "all_decharge_region_id": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "owner_id": {
+                                "type": "string"
+                            },
+                            "run_id": {
+                                "type": "string"
+                            },
+                            "email_run_time": {
+                                "type": "string"
+                            },
+                            "subject": {
+                                "type": "string"
+                            },
+                            "crm_load_port_name": {
+                                "type": "string"
+                            },
+                            "crm_discharge_port_name": {
+                                "type": "string"
+                            },
+                            "crm_product_name": {
+                                "type": "string"
+                            },
+                            "crm_contact_name": {
+                                "type": "string"
+                            },
+                            "crm_broker_site": {
+                                "type": "string"
+                            },
+                            "crm_charter": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "Parse_JSON-crm-name": {
+                "runAfter": {
+                    "Parse_JSON": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@outputs('stringToJson')",
+                    "schema": {
+                        "properties": {
+                            "crm_broker_site": {
+                                "type": "string"
+                            },
+                            "crm_charter": {
+                                "type": "string"
+                            },
+                            "crm_contact_name": {
+                                "type": "string"
+                            },
+                            "crm_discharge_port_name": {
+                                "type": "string"
+                            },
+                            "crm_load_port_name": {
+                                "type": "string"
+                            },
+                            "crm_product_name": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                }
+            },
+            "base64ToString": {
+                "runAfter": {},
+                "type": "Compose",
+                "inputs": "@base64ToString(triggerBody()?['ContentData'])"
+            },
+            "stringToJson": {
+                "runAfter": {
+                    "base64ToString": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Compose",
+                "inputs": "@json(outputs('base64ToString'))"
+            },
+            "List_rows": {
+                "runAfter": {
+                    "Delay": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['commondataservice-1']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "headers": {
+                        "prefer": "odata.include-annotations=*",
+                        "accept": "application/json;odata.metadata=full",
+                        "organization": "https://stolt.crm4.dynamics.com"
+                    },
+                    "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent('leads'))}",
+                    "queries": {
+                        "$filter": "leadid eq @{body('Add_a_new_row_(preview)')?['leadid']}"
+                    }
+                }
+            },
+            "For_each": {
+                "foreach": "@body('List_rows')?['value']",
+                "actions": {
+                    "Send_message_": {
+                        "type": "ApiConnection",
+                        "inputs": {
+                            "host": {
+                                "connection": {
+                                    "name": "@parameters('$connections')['servicebus']['connectionId']"
+                                }
+                            },
+                            "method": "post",
+                            "body": {
+                                "ContentData": "@base64(concat('{','\n','  \"Cargo_id\":\"',item()?['_hso_cargoid_value'],'\" ,','\n','  \"CargoGroup_id\":\"',item()?['_hso_cargogroupid_value'],'\" ,','\n','  \"LPort_id\":\"',item()?['_hso_loadportid_value'],'\" ,','\n','  \"Larea_id\": \"',item()?['_hso_loadregionid_value'],'\",','\n','  \"DPort_id\": \"',item()?['_hso_dischargeportid_value'],'\" ,','\n','  \"Darea_id\": \"',item()?['_hso_dischargeregionid_value'],'\",','\n','  \"LineOfBusiness_id\": \"',item()?['_hso_lineofbusinessid_value'],'\",','\n','  \"Contact_id\":\"',item()?['_hso_contactid_value'],'\" ,','\n','  \"MasterBroker_id\": \"',item()?['_hso_masterbrokerid_value'],'\",','\n','  \"MasterCustomer_id\": \"',item()?['_hso_mastercustomerid_value'],'\",','\n','  \"Lead_id\":\"',item()?['leadid'],'\",','\n',' \"tradelane\":\"',item()?['_hso_tradelaneid_value'],'\"','\n','}'))"
+                            },
+                            "path": "/@{encodeURIComponent(encodeURIComponent('sbt-st-jarvis-we-cust'))}/messages",
+                            "queries": {
+                                "systemProperties": "None"
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "List_rows": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Foreach"
+            },
+            "Delay": {
+                "runAfter": {
+                    "Insert_row_(V2)": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Wait",
+                "inputs": {
+                    "interval": {
+                        "count": 20,
+                        "unit": "Second"
+                    }
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {
+                "servicebus": {
+                    "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/providers/Microsoft.Web/locations/westeurope/managedApis/servicebus",
+                    "connectionId": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/connections/servicebus",
+                    "connectionName": "servicebus"
+                },
+                "commondataservice-1": {
+                    "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/providers/Microsoft.Web/locations/westeurope/managedApis/commondataservice",
+                    "connectionId": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/connections/commondataservice",
+                    "connectionName": "commondataservice"
+                },
+                "azuretables": {
+                    "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/providers/Microsoft.Web/locations/westeurope/managedApis/azuretables",
+                    "connectionId": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/connections/azuretables",
+                    "connectionName": "azuretables"
+                },
+                "sql": {
+                    "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/providers/Microsoft.Web/locations/westeurope/managedApis/sql",
+                    "connectionId": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/connections/sql",
+                    "connectionName": "sql"
+                }
+            }
+        }
+    }
+}

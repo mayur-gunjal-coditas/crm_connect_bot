@@ -1,0 +1,103 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "Recurrence": {
+                "recurrence": {
+                    "interval": 1,
+                    "frequency": "Day",
+                    "timeZone": "UTC",
+                    "schedule": {
+                        "hours": [
+                            "21"
+                        ]
+                    },
+                    "startTime": "2024-11-21T23:00:00Z"
+                },
+                "evaluatedRecurrence": {
+                    "interval": 1,
+                    "frequency": "Day",
+                    "timeZone": "UTC",
+                    "schedule": {
+                        "hours": [
+                            "21"
+                        ]
+                    },
+                    "startTime": "2024-11-21T23:00:00Z"
+                },
+                "type": "Recurrence"
+            }
+        },
+        "actions": {
+            "List_rows": {
+                "runAfter": {},
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['commondataservice']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "headers": {
+                        "prefer": "odata.include-annotations=*",
+                        "accept": "application/json;odata.metadata=full",
+                        "organization": "https://stolt-uat.crm4.dynamics.com"
+                    },
+                    "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent('leads'))}",
+                    "queries": {
+                        "$filter": "_createdby_value eq 'f9e26e08-dc74-ef11-a671-000d3ab1415a' and createdon gt @{formatDateTime(addHours(utcNow(), -480), 'yyyy-MM-ddTHH:mm:ss.fffZ')} and createdon le @{formatDateTime(addHours(utcNow(), -456), 'yyyy-MM-ddTHH:mm:ss.fffZ')}  and statecode ne 2"
+                    }
+                }
+            },
+            "Update_blob_(V2)": {
+                "runAfter": {
+                    "List_rows": [
+                        "Succeeded"
+                    ]
+                },
+                "metadata": {
+                    "JTJmY29udGFpbmVyLXN0LWNvbm5lY3Qtd2UlMmZzdC1jb25uZWN0LXBhc3QtZGF0YS5qc29u": "/container-st-connect-we/st-connect-past-data.json"
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azureblob']['connectionId']"
+                        }
+                    },
+                    "method": "put",
+                    "body": "@body('List_rows')?['value']",
+                    "headers": {
+                        "ReadFileMetadataFromServer": true
+                    },
+                    "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files/@{encodeURIComponent(encodeURIComponent('JTJmY29udGFpbmVyLXN0LWNvbm5lY3Qtd2UlMmZzdC1jb25uZWN0LXBhc3QtZGF0YS5qc29u'))}"
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "value": {
+                "commondataservice": {
+                    "id": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/providers/Microsoft.Web/locations/westeurope/managedApis/commondataservice",
+                    "connectionId": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/resourceGroups/rg-st-jarvis-uat-we/providers/Microsoft.Web/connections/commondataservice-2",
+                    "connectionName": "commondataservice-2"
+                },
+                "azureblob": {
+                    "id": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/providers/Microsoft.Web/locations/westeurope/managedApis/azureblob",
+                    "connectionId": "/subscriptions/9dbee7b9-2dde-4b64-8bdb-f92155c2807c/resourceGroups/rg-st-jarvis-uat-we/providers/Microsoft.Web/connections/azureblob",
+                    "connectionName": "azureblob"
+                }
+            }
+        }
+    }
+}

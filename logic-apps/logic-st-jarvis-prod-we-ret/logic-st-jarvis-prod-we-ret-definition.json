@@ -1,0 +1,156 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "Recurrence": {
+                "recurrence": {
+                    "frequency": "Day",
+                    "interval": 1,
+                    "schedule": {
+                        "hours": [
+                            "20"
+                        ],
+                        "minutes": [
+                            0
+                        ]
+                    },
+                    "startTime": "2024-09-13T23:00:00Z",
+                    "timeZone": "UTC"
+                },
+                "evaluatedRecurrence": {
+                    "frequency": "Day",
+                    "interval": 1,
+                    "schedule": {
+                        "hours": [
+                            "20"
+                        ],
+                        "minutes": [
+                            0
+                        ]
+                    },
+                    "startTime": "2024-09-13T23:00:00Z",
+                    "timeZone": "UTC"
+                },
+                "type": "Recurrence"
+            }
+        },
+        "actions": {
+            "List_rows_(preview)": {
+                "runAfter": {},
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['commondataservice']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "headers": {
+                        "prefer": "odata.include-annotations=*",
+                        "accept": "application/json;odata.metadata=full",
+                        "organization": "https://stolt.crm4.dynamics.com"
+                    },
+                    "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent('leads'))}",
+                    "queries": {
+                        "$filter": "_createdby_value eq '81bd16c2-d774-ef11-a670-7c1e523555bb'  and modifiedon ge @{formatDateTime(addHours(utcNow(), -24), 'yyyy-MM-ddTHH:mm:ss.fffZ')} and statecode ne 2"
+                    }
+                }
+            },
+            "Update_blob_(V2)": {
+                "runAfter": {
+                    "List_rows_(preview)": [
+                        "Succeeded"
+                    ]
+                },
+                "metadata": {
+                    "JTJmY29udGFpbmVyLXN0LWNvbm5lY3Qtd2UlMmZzdC1jb25uZWN0LXJldHJhaW4tZGF0YS5qc29u": "/container-st-connect-we/st-connect-retrain-data.json"
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azureblob']['connectionId']"
+                        }
+                    },
+                    "method": "put",
+                    "body": "@body('List_rows_(preview)')?['value']",
+                    "headers": {
+                        "ReadFileMetadataFromServer": true
+                    },
+                    "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files/@{encodeURIComponent(encodeURIComponent('JTJmY29udGFpbmVyLXN0LWNvbm5lY3Qtd2UlMmZzdC1jb25uZWN0LXJldHJhaW4tZGF0YS5qc29u'))}"
+                }
+            },
+            "List_rows_(preview)-opportunities": {
+                "runAfter": {},
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['commondataservice']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "headers": {
+                        "prefer": "odata.include-annotations=*",
+                        "accept": "application/json;odata.metadata=full",
+                        "organization": "https://stolt.crm4.dynamics.com"
+                    },
+                    "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent('opportunities'))}",
+                    "queries": {
+                        "$filter": "modifiedon ge @{formatDateTime(addHours(utcNow(), -24), 'yyyy-MM-ddTHH:mm:ss.fffZ')} and statecode ne 2"
+                    }
+                }
+            },
+            "Update_blob_(V2)-opportunities": {
+                "runAfter": {
+                    "List_rows_(preview)-opportunities": [
+                        "Succeeded"
+                    ]
+                },
+                "metadata": {
+                    "JTJmY29udGFpbmVyLXN0LWNvbm5lY3Qtd2UlMmZzdC1jb25uZWN0LXJldHJhaW4tZGF0YS5qc29u": "/container-st-connect-we/st-connect-retrain-data.json",
+                    "JTJmY29udGFpbmVyLXN0LWNvbm5lY3Qtd2UlMmZzdC1jb25uZWN0LXJldHJhaW4tb3BwLWRhdGEuanNvbg==": "/container-st-connect-we/st-connect-retrain-opp-data.json"
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azureblob']['connectionId']"
+                        }
+                    },
+                    "method": "put",
+                    "body": "@body('List_rows_(preview)-opportunities')?['value']",
+                    "headers": {
+                        "ReadFileMetadataFromServer": true
+                    },
+                    "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files/@{encodeURIComponent(encodeURIComponent('JTJmY29udGFpbmVyLXN0LWNvbm5lY3Qtd2UlMmZzdC1jb25uZWN0LXJldHJhaW4tb3BwLWRhdGEuanNvbg=='))}"
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {
+                "commondataservice": {
+                    "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/providers/Microsoft.Web/locations/westeurope/managedApis/commondataservice",
+                    "connectionId": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/connections/commondataservice",
+                    "connectionName": "commondataservice"
+                },
+                "azureblob": {
+                    "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/providers/Microsoft.Web/locations/westeurope/managedApis/azureblob",
+                    "connectionId": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/connections/azureblob",
+                    "connectionName": "azureblob"
+                }
+            }
+        }
+    }
+}

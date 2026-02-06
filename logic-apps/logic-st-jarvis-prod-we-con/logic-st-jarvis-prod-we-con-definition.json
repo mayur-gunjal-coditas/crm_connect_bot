@@ -1,0 +1,165 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "When_a_new_email_arrives_in_a_shared_mailbox_(V2)": {
+                "recurrence": {
+                    "frequency": "Minute",
+                    "interval": 3
+                },
+                "evaluatedRecurrence": {
+                    "frequency": "Minute",
+                    "interval": 3
+                },
+                "splitOn": "@triggerBody()?['value']",
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['office365']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/v2/SharedMailbox/Mail/OnNewEmail",
+                    "queries": {
+                        "mailboxAddress": "TankerQuotes@stolt.com",
+                        "importance": "Any",
+                        "hasAttachments": false,
+                        "includeAttachments": false,
+                        "folderId": "Inbox"
+                    }
+                }
+            }
+        },
+        "actions": {
+            "Compose": {
+                "runAfter": {
+                    "Compose_time": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Compose",
+                "inputs": "@workflow().run.id"
+            },
+            "Compose_time": {
+                "runAfter": {},
+                "type": "Compose",
+                "inputs": "@utcNow()"
+            },
+            "func-st-jarvis-prod-we-func-st-connect-html-to-text": {
+                "runAfter": {
+                    "Compose": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Function",
+                "inputs": {
+                    "body": "@triggerBody()?['body']",
+                    "function": {
+                        "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/sites/func-st-jarvis-prod-we/functions/func-st-connect-html-to-text"
+                    }
+                }
+            },
+            "Condition": {
+                "actions": {
+                    "Send_message": {
+                        "type": "ApiConnection",
+                        "inputs": {
+                            "host": {
+                                "connection": {
+                                    "name": "@parameters('$connections')['servicebus']['connectionId']"
+                                }
+                            },
+                            "method": "post",
+                            "body": {
+                                "ContentData": "@base64(concat(outputs('Compose'),'--runid--',triggerBody()?['from'],'(',body('func-st-jarvis-prod-we-func-st-connect-html-to-text'),')',triggerBody()?['subject'],'{',outputs('Compose_time'),'}'))"
+                            },
+                            "path": "/@{encodeURIComponent(encodeURIComponent('sbt-st-jarvis-we-con'))}/messages",
+                            "queries": {
+                                "systemProperties": "None"
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "func-st-jarvis-prod-we-func-st-connect-html-to-text": [
+                        "Succeeded"
+                    ]
+                },
+                "else": {
+                    "actions": {
+                        "Insert_row_(V2)": {
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['sql']['connectionId']"
+                                    }
+                                },
+                                "method": "post",
+                                "body": {
+                                    "PartitionKey": "@concat('success-olderemail-queue-\r\n',formatDateTime(utcNow(), 'yyyyMMddHHmmss'))",
+                                    "RowKey": "@concat('success-olderemail-queue-\r\n',formatDateTime(utcNow(), 'yyyyMMddHHmmss'))",
+                                    "process_status": "older_email",
+                                    "run_id": "@last(split(outputs('Compose'), '/'))\r\n",
+                                    "error_desc": "NA",
+                                    "email_run_time": "@convertTimeZone(triggerBody()?['receivedDateTime'], 'UTC', 'UTC')",
+                                    "subject": "@triggerBody()?['subject']",
+                                    "body": "@{triggerBody()?['from']}(@{body('func-st-jarvis-prod-we-func-st-connect-html-to-text')})@{triggerBody()?['subject']}{@{triggerBody()?['receivedDateTime']}}"
+                                },
+                                "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('default'))},@{encodeURIComponent(encodeURIComponent('default'))}/tables/@{encodeURIComponent(encodeURIComponent('[dbo].[process_log]'))}/items"
+                            }
+                        }
+                    }
+                },
+                "expression": {
+                    "and": [
+                        {
+                            "greaterOrEquals": [
+                                "@convertTimeZone(triggerBody()?['receivedDateTime'], 'UTC', 'UTC')",
+                                "@addDays(utcNow(), -60)"
+                            ]
+                        },
+                        {
+                            "lessOrEquals": [
+                                "@convertTimeZone(triggerBody()?['receivedDateTime'], 'UTC', 'UTC')",
+                                "@addDays(utcNow(), 1)"
+                            ]
+                        }
+                    ]
+                },
+                "type": "If"
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {
+                "office365": {
+                    "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/providers/Microsoft.Web/locations/westeurope/managedApis/office365",
+                    "connectionId": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/connections/office365",
+                    "connectionName": "office365"
+                },
+                "servicebus": {
+                    "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/providers/Microsoft.Web/locations/westeurope/managedApis/servicebus",
+                    "connectionId": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/connections/servicebus",
+                    "connectionName": "servicebus"
+                },
+                "sql": {
+                    "id": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/providers/Microsoft.Web/locations/westeurope/managedApis/sql",
+                    "connectionId": "/subscriptions/76486374-e21a-4ef1-9c67-cf99839f067a/resourceGroups/rg-st-jarvis-prod-we/providers/Microsoft.Web/connections/sql",
+                    "connectionName": "sql"
+                }
+            }
+        }
+    }
+}
