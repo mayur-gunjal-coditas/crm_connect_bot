@@ -1,0 +1,7 @@
+variables:
+  location: "westeurope"
+  division: "st"
+  environment: "uat"
+  iacTemplatePath: "infrastructure/main.bicep"
+  iacTemplateParametersPath: "infrastructure/parameters/main.uat.bicepparam"
+  runtimeStack: "PYTHON|3.10"

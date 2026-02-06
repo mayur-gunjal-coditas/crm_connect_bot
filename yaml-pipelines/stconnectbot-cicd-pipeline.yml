@@ -1,0 +1,36 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - Infrastructure
+      - functions-app
+      - functions-app-ml
+      - logic-apps
+
+resources:
+  repositories:
+    - repository: CommonInfrastructure
+      type: git
+      endpoint: GIT_COMMON_CODE
+      name: Shared-infrastructure/Common.Infrastructure
+      ref: refs/tags/v0.1.5
+pool:
+  vmImage: ubuntu-latest
+  clean: all
+
+stages:
+    - template: templates\build.yml
+
+    - template: templates\deploy.yml
+      parameters:
+        environment: "dev"
+
+    - template: templates\deploy.yml
+      parameters:
+        environment: "uat"
+
+    - template: templates\deploy.yml
+      parameters:
+        environment: "prod"

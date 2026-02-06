@@ -1,0 +1,35 @@
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        steps:
+          - template: yaml-templates/build/python-app.yml@CommonInfrastructure
+            parameters:
+              repoName: 'ST Connect Bot'
+              appPath: 'functions-app'
+
+          - template: yaml-templates/build/python-app.yml@CommonInfrastructure
+            parameters:
+              repoName: 'ST Connect Bot'
+              appPath: 'functions-app-ml'    
+          
+          - task: CopyFiles@2
+            displayName: 'Copy IaC files to staging directory'
+            inputs:
+              Contents: |
+                $(Build.SourcesDirectory)/$(Build.Repository.Name)/infrastructure/**                
+              TargetFolder: $(Build.ArtifactStagingDirectory)
+
+          #Logic app build file
+          - task: CopyFiles@2
+            displayName: "Copy logic app files to staging directory"
+            inputs:
+              Contents: |
+                $(Build.SourcesDirectory)/$(Build.Repository.Name)/logic-apps/**
+              TargetFolder: $(Build.ArtifactStagingDirectory)
+              
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: $(Build.ArtifactStagingDirectory)/$(Build.Repository.Name)
+              artifactName: drop
+            displayName: "Publish build artifacts"

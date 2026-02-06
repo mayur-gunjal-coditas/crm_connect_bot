@@ -1,0 +1,180 @@
+parameters:
+  - name: environment
+    type: string
+stages:
+  - stage:
+    displayName: ${{ parameters.environment }}
+    jobs:
+      - deployment: Deploy
+        # dependsOn: Build
+        environment: ${{ parameters.environment }}
+        variables:
+          - template: ../variables/vars-${{ lower(parameters.environment) }}.yml
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  name: IacDeploy
+                  displayName: "Deploy Bicep template for ${{parameters.environment}}"
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: "inlineScript"
+                    inlineScript: |
+                      az config set bicep.use_binary_from_path=false
+                      az bicep install
+                      $result = az deployment sub create `
+                          --name $(Build.BuildNumber) `
+                          --location ${{lower(variables.location)}} `
+                          --template-file '$(Pipeline.Workspace)/drop/${{lower(variables.iacTemplatePath)}}' `
+                          --parameters '$(Pipeline.Workspace)/drop/${{lower(variables.iacTemplateParametersPath)}}' `
+                          | ConvertFrom-Json
+                      $resourceGroupName = $result.properties.outputs.resourceGroupName.value
+                      Write-Host "##vso[task.setvariable variable=resourceGroupName]$resourceGroupName" 
+                      $functionAppName = $result.properties.outputs.functionAppName.value
+                      Write-Host "##vso[task.setvariable variable=functionAppName]$functionAppName"
+                      $functionAppmlName = $result.properties.outputs.functionAppmlName.value
+                      Write-Host "##vso[task.setvariable variable=functionAppmlName]$functionAppmlName"
+                      $keyVaultName = $result.properties.outputs.keyVaultName.value
+                      Write-Host "##vso[task.setvariable variable=keyVaultName]$keyVaultName"
+                      $functionAppOutboundIPs = $result.properties.outputs.functionAppOutboundIPs.value
+                      Write-Host "##vso[task.setvariable variable=functionAppOutboundIPs]$functionAppOutboundIPs"
+                      $logicAppName_con = $result.properties.outputs.logicAppName_con.value
+                      Write-Host "##vso[task.setvariable variable=logicAppName_con]$logicAppName_con"
+                      $logicAppName_ret = $result.properties.outputs.logicAppName_ret.value
+                      Write-Host "##vso[task.setvariable variable=logicAppName_ret]$logicAppName_ret"              
+                      $logicAppName_upl = $result.properties.outputs.logicAppName_upl.value
+                      Write-Host "##vso[task.setvariable variable=logicAppName_upl]$logicAppName_upl"                  
+                      $logicAppName_acc = $result.properties.outputs.logicAppName_acc.value
+                      Write-Host "##vso[task.setvariable variable=logicAppName_acc]$logicAppName_acc"              
+                      $logicAppName_cust = $result.properties.outputs.logicAppName_cust.value
+                      Write-Host "##vso[task.setvariable variable=logicAppName_cust]$logicAppName_cust"          
+
+                - task: AzureCLI@2
+                  displayName: 'Deploy logic app consumption resources'
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az logic workflow create `
+                       --resource-group $(resourceGroupName) `
+                       --location ${{lower(variables.location)}} `
+                       --name $(logicAppName_con) `
+                       --definition '$(Pipeline.Workspace)/drop/logic-apps/$(logicAppName_con)/$(logicAppName_con)-definition.json'
+
+                - task: AzureCLI@2
+                  displayName: 'Deploy logic app retrain resources'
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az logic workflow create `
+                       --resource-group $(resourceGroupName) `
+                       --location ${{lower(variables.location)}} `
+                       --name $(logicAppName_ret) `
+                       --definition '$(Pipeline.Workspace)/drop/logic-apps/$(logicAppName_ret)/$(logicAppName_ret)-definition.json'
+
+                - task: AzureCLI@2
+                  displayName: 'Deploy logic app upload resources'
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az logic workflow create `
+                       --resource-group $(resourceGroupName) `
+                       --location ${{lower(variables.location)}} `
+                       --name $(logicAppName_upl) `
+                       --definition '$(Pipeline.Workspace)/drop/logic-apps/$(logicAppName_upl)/$(logicAppName_upl)-definition.json'         
+
+                - task: AzureCLI@2
+                  displayName: 'Deploy logic app accurcy resources'
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az logic workflow create `
+                       --resource-group $(resourceGroupName) `
+                       --location ${{lower(variables.location)}} `
+                       --name $(logicAppName_acc) `
+                       --definition '$(Pipeline.Workspace)/drop/logic-apps/$(logicAppName_acc)/$(logicAppName_acc)-definition.json'                                                                                     
+
+                - task: AzureCLI@2
+                  displayName: 'Deploy logic app customer resources'
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az logic workflow create `
+                       --resource-group $(resourceGroupName) `
+                       --location ${{lower(variables.location)}} `
+                       --name $(logicAppName_cust) `
+                       --definition '$(Pipeline.Workspace)/drop/logic-apps/$(logicAppName_cust)/$(logicAppName_cust)-definition.json' 
+
+                - task: AzureFunctionApp@1
+                  displayName: Deploy Function 
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    appType: 'functionAppLinux'
+                    appName: $(functionAppName)
+                    runtimeStack: ${{upper(variables.runtimeStack)}}
+                    package: "$(Pipeline.Workspace)/drop/functions-app/*.zip"
+               
+                
+                - task: AzureCLI@2
+                  displayName: 'Add Function IPs to key vault'
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: 'scriptPath'
+                    scriptPath: '$(Pipeline.Workspace)/drop/infrastructure/common/scripts/KeyVault-AddNetworkRule.ps1'
+                    arguments: "-keyVaultName $(keyVaultName) -allowedIPs '$(functionAppOutboundIPs)'"
+                    
+                - task: AzureCLI@2
+                  displayName: 'Restart Function app'
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az functionapp restart `
+                       --name $(functionAppName) `
+                       --resource-group $(resourceGroupName)
+
+              #Deploing Function App ML
+
+                - task: AzureFunctionApp@1
+                  displayName: Deploy Function_ml 
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    appType: 'functionAppLinux'
+                    appName: $(functionAppmlName)
+                    runtimeStack: ${{upper(variables.runtimeStack)}}
+                    package: "$(Pipeline.Workspace)/drop/functions-app-ml/*.zip"
+               
+                
+                - task: AzureCLI@2
+                  displayName: 'Add Function IPs to key vault'
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: 'scriptPath'
+                    scriptPath: '$(Pipeline.Workspace)/drop/infrastructure/common/scripts/KeyVault-AddNetworkRule.ps1'
+                    arguments: "-keyVaultName $(keyVaultName) -allowedIPs '$(functionAppOutboundIPs)'"
+                    
+                - task: AzureCLI@2
+                  displayName: 'Restart Function app'
+                  inputs:
+                    azureSubscription: "ARM_${{upper(variables.division)}}_${{upper(variables.environment)}}"
+                    scriptType: pscore
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az functionapp restart `
+                       --name $(functionAppmlName) `
+                       --resource-group $(resourceGroupName)                       
+                       
